@@ -14,9 +14,12 @@ import (
 	"albums-api/internal/handlers"
 	"albums-api/internal/repository"
 
-	"github.com/gin-gonic/gin"
+	_ "albums-api/docs" // ← Этот импорт должен быть именно так
 
+	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
 )
 
 type Server struct {
@@ -26,9 +29,8 @@ type Server struct {
 }
 
 func New(cfg *config.Config) (*Server, error) {
-	config.InitLogger(cfg.Env) // ← добавь это
+	config.InitLogger(cfg.Env)
 
-	// Подключаемся к БД
 	database, err := db.NewConnection(cfg)
 	if err != nil {
 		return nil, err
@@ -40,19 +42,27 @@ func New(cfg *config.Config) (*Server, error) {
 
 	router := gin.Default()
 
+	// CORS Middleware
 	router.Use(corsMiddleware())
 
-	// Middleware для логирования
+	// Logging Middleware
 	router.Use(func(c *gin.Context) {
-		config.Log.WithFields(logrus.Fields{
-			"method": c.Request.Method,
-			"path":   c.Request.URL.Path,
-			"client": c.ClientIP(),
-		}).Info("incoming request")
+		start := time.Now()
 		c.Next()
+
+		config.Log.WithFields(logrus.Fields{
+			"method":  c.Request.Method,
+			"path":    c.Request.URL.Path,
+			"status":  c.Writer.Status(),
+			"latency": time.Since(start),
+			"client":  c.ClientIP(),
+		}).Info("request completed")
 	})
 
-	// Роуты
+	// Swagger UI
+	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+
+	// API Routes
 	api := router.Group("/api/v1")
 	{
 		albums := api.Group("/albums")
@@ -64,7 +74,6 @@ func New(cfg *config.Config) (*Server, error) {
 			albums.DELETE("/:id", albumHandler.Delete)
 		}
 
-		// Health check
 		api.GET("/health", healthHandler.Check)
 	}
 
@@ -73,6 +82,22 @@ func New(cfg *config.Config) (*Server, error) {
 		db:     database,
 		config: cfg,
 	}, nil
+}
+
+// corsMiddleware ... (оставь как было)
+func corsMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
+		c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
+		c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, accept, origin, Cache-Control, X-Requested-With")
+		c.Writer.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS, GET, PUT, DELETE, PATCH")
+
+		if c.Request.Method == "OPTIONS" {
+			c.AbortWithStatus(204)
+			return
+		}
+		c.Next()
+	}
 }
 
 func (s *Server) Start() error {
@@ -106,21 +131,4 @@ func (s *Server) Start() error {
 	s.db.Close()
 	fmt.Println("👋 Сервер остановлен gracefully")
 	return nil
-}
-
-// corsMiddleware — middleware для CORS
-func corsMiddleware() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		c.Writer.Header().Set("Access-Control-Allow-Origin", "*") // В продакшене лучше указывать конкретные домены
-		c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
-		c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, accept, origin, Cache-Control, X-Requested-With")
-		c.Writer.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS, GET, PUT, DELETE, PATCH")
-
-		if c.Request.Method == "OPTIONS" {
-			c.AbortWithStatus(204)
-			return
-		}
-
-		c.Next()
-	}
 }
