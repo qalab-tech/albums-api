@@ -1,0 +1,218 @@
+definitions:
+  albums-api_internal_models.Album:
+    properties:
+      artist:
+        type: string
+      id:
+        type: integer
+      price:
+        type: number
+      title:
+        type: string
+    type: object
+  albums-api_internal_models.NewAlbum:
+    properties:
+      artist:
+        maxLength: 255
+        minLength: 1
+        type: string
+      price:
+        minimum: 0
+        type: number
+      title:
+        maxLength: 255
+        minLength: 1
+        type: string
+    required:
+    - artist
+    - price
+    - title
+    type: object
+  albums-api_internal_models.UpdateAlbum:
+    properties:
+      artist:
+        maxLength: 255
+        minLength: 1
+        type: string
+      price:
+        minimum: 0
+        type: number
+      title:
+        maxLength: 255
+        minLength: 1
+        type: string
+    type: object
+  internal_handlers.ErrorResponse:
+    properties:
+      error:
+        type: string
+      success:
+        type: boolean
+    type: object
+  internal_handlers.SuccessResponse:
+    properties:
+      data: {}
+      success:
+        type: boolean
+    type: object
+info:
+  contact: {}
+paths:
+  /api/v1/albums:
+    get:
+      consumes:
+      - application/json
+      description: Возвращает список всех альбомов из базы данных
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/internal_handlers.SuccessResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/albums-api_internal_models.Album'
+                  type: array
+              type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
+      summary: Получить все альбомы
+      tags:
+      - albums
+    post:
+      consumes:
+      - application/json
+      description: Добавляет новый альбом в базу
+      parameters:
+      - description: Данные альбома
+        in: body
+        name: album
+        required: true
+        schema:
+          $ref: '#/definitions/albums-api_internal_models.NewAlbum'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/internal_handlers.SuccessResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/albums-api_internal_models.Album'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
+      summary: Создать новый альбом
+      tags:
+      - albums
+  /api/v1/albums/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Удаляет альбом по ID
+      parameters:
+      - description: ID альбома
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_handlers.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
+      summary: Удалить альбом
+      tags:
+      - albums
+    get:
+      consumes:
+      - application/json
+      description: Возвращает один альбом по его ID
+      parameters:
+      - description: ID альбома
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/internal_handlers.SuccessResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/albums-api_internal_models.Album'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
+      summary: Получить альбом по ID
+      tags:
+      - albums
+    put:
+      consumes:
+      - application/json
+      description: Обновляет информацию об альбоме (частично)
+      parameters:
+      - description: ID альбома
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Данные для обновления
+        in: body
+        name: album
+        required: true
+        schema:
+          $ref: '#/definitions/albums-api_internal_models.UpdateAlbum'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/internal_handlers.SuccessResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/albums-api_internal_models.Album'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
+      summary: Обновить альбом
+      tags:
+      - albums
+swagger: "2.0"
