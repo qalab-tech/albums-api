@@ -19,26 +19,29 @@ fresh:
 
 # ================== Тесты ==================
 
-test:
+test-auth:
 	docker-compose exec auth-service pytest tests/ -v --tb=short
 
-test-positive:
+test-auth-positive:
 	docker-compose exec auth-service pytest tests/test_users_positive_cases.py -v --tb=short
 
-test-negative:
+test-auth-negative:
 	docker-compose exec auth-service pytest tests/test_users_negative_cases.py -v --tb=short
+
+test-albums:
+	docker-compose exec app go test ./internal/handlers/tests -v
 
 # ================== Доступ к контейнерам ==================
 
-shell:
+shell-auth:
 	docker-compose exec auth-service bash
 
 # ================== Работа с базами ==================
 
-db-shell:
+db-auth-shell:
 	docker-compose exec auth-postgres psql -U postgres -d authdb
 
-db-albums:
+db-albums-shell:
 	docker-compose exec postgres psql -U postgres -d albumsdb
 
 redis-shell:
@@ -46,7 +49,7 @@ redis-shell:
 
 # ================== Полезные команды ==================
 
-restart:
+restart-auth:
 	docker-compose restart auth-service
 
 status:
@@ -62,11 +65,13 @@ help:
 	@echo "  make down            - Остановить и удалить контейнеры"
 	@echo "  make fresh / reset   - Полная пересборка с нуля"
 	@echo ""
-	@echo "=== Тесты ==="
-	@echo "  make test            - Запустить все тесты"
-	@echo "  make test-positive   - Только позитивные тесты"
-	@echo "  make test-negative   - Только негативные тесты"
+	@echo "=== Тесты auth-service ==="
+	@echo "  make test-auth            - Запустить все тесты auth-service"
+	@echo "  make test-auth-positive   - Только позитивные тесты auth-service"
+	@echo "  make test-auth-negative   - Только негативные тесты auth-service"
 	@echo ""
+	@echo "=== Тесты auth-service =="
+	@echo "  make test-albums            - Запустить все тесты albums"
 	@echo "=== Доступ к сервисам ==="
 	@echo "  make shell           - Зайти в auth-service (bash)"
 	@echo "  make db-shell        - Зайти в psql authdb"
