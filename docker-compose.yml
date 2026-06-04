@@ -1,4 +1,5 @@
 services:
+  # ================== Albums Database ==================
   postgres:
     image: postgres:16-alpine
     container_name: albums-postgres
@@ -13,6 +14,43 @@ services:
       - postgres_data:/var/lib/postgresql/data
       - ./migrations:/docker-entrypoint-initdb.d
 
+  # ================== Auth Database ==================
+  auth-postgres:
+    image: postgres:16-alpine
+    container_name: auth-postgres
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: authdb
+    ports:
+      - "5433:5432"
+    volumes:
+      - auth_postgres_data:/var/lib/postgresql/data
+      - ./auth-migrations:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 3s
+      retries: 8
+      start_period: 10s
+
+  # ================== Redis ==================
+  redis:
+    image: redis:7-alpine
+    container_name: auth-redis
+    restart: always
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+  
+  # ================== Albums API (Go) ==================
   app:
     build: .
     container_name: albums-api
@@ -30,5 +68,33 @@ services:
     depends_on:
       - postgres
 
+  # ================== Auth Service (Flask) ==================
+  auth-service:
+    build: /Users/macbook/PycharmProjects/flask-microserv-auth
+    container_name: auth-service
+    restart: always
+    ports:
+      - "5001:5001"
+    environment:
+      AUTH_DATABASE_URL: postgresql://postgres:postgres@auth-postgres:5432/authdb
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      SECRET_KEY: super-secret-jwt-key-change-me-in-production-2026
+      JWT_ACCESS_TOKEN_EXPIRES: 3600
+      ENV: docker
+    depends_on:
+      auth-postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5001/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+
 volumes:
   postgres_data:
+  auth_postgres_data:
+  redis_data:
