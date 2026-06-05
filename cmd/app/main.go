@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 
 	"albums-api/internal/config"
@@ -10,15 +11,14 @@ import (
 func main() {
 	cfg, err := config.Load()
 	if err != nil {
-		log.Fatalf("Не удалось загрузить конфиг: %v", err)
+		log.Fatalf("Failed to load config: %v", err)
 	}
 
-	app, err := server.New(cfg)
-	if err != nil {
-		log.Fatalf("Не удалось инициализировать приложение: %v", err)
-	}
+	// Создаём сервер
+	srv := server.New(cfg)
 
-	if err := app.Start(); err != nil {
-		log.Fatalf("Ошибка запуска: %v", err)
+	fmt.Println("Starting server...")
+	if err := srv.Start(); err != nil {
+		log.Fatalf("Server failed: %v", err)
 	}
 }
