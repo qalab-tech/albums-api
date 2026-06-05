@@ -3,11 +3,11 @@ FROM golang:1.26-alpine AS builder
 
 WORKDIR /app
 
-# Копируем go.mod и go.sum
+# Копируем зависимости
 COPY go.mod go.sum ./
 RUN go mod download
 
-# Копируем весь исходный код
+# Копируем исходный код
 COPY . .
 
 # Генерируем Swagger
@@ -17,21 +17,23 @@ RUN swag init -g cmd/app/main.go --parseDependency --parseInternal --parseDepth 
 # Собираем приложение
 RUN CGO_ENABLED=0 GOOS=linux go build -v -o main ./cmd/app
 
-# ================== Final Stage (с Go для тестов) ==================
+# ================== Final Stage ==================
 FROM golang:1.26-alpine
 
 WORKDIR /app
 
-# Копируем скомпилированное приложение
+# Копируем бинарник
 COPY --from=builder /app/main .
 
-# Копируем исходники для возможности запуска тестов
+# Копируем исходники (нужно для swag и тестов)
 COPY --from=builder /app/go.mod /app/go.sum ./
 COPY --from=builder /app/internal ./internal
 COPY --from=builder /app/cmd ./cmd
+COPY --from=builder /app/docs ./docs     
 
-# Скачиваем зависимости
-RUN go mod download
+# Устанавливаем swag (чтобы можно было перегенерировать внутри контейнера)
+RUN go install github.com/swaggo/swag/cmd/swag@latest && \
+    go mod download
 
 EXPOSE 8080
 

@@ -65,6 +65,7 @@ services:
       DB_USER: postgres
       DB_PASSWORD: postgres
       DB_NAME: albumsdb
+      AUTH_SERVICE_URL: http://auth-service:5001
     depends_on:
       - postgres
 
