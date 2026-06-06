@@ -11,8 +11,10 @@ down:
 build:
 	docker-compose build --no-cache
 
-logs:
+logs-auth:
 	docker-compose logs -f auth-service
+logs-albums:
+	docker-compose logs -f app
 
 fresh:
 	docker-compose down -v && docker-compose up --build -d
@@ -30,6 +32,9 @@ test-auth-negative:
 
 test-albums:
 	docker-compose exec app go test ./internal/handlers/tests -v
+
+test-albums-integration:
+	docker-compose exec app go test ./internal/handlers/tests -run TestIntegration -v
 
 # ================== Доступ к контейнерам ==================
 
@@ -70,13 +75,15 @@ help:
 	@echo "  make test-auth-positive   - Только позитивные тесты auth-service"
 	@echo "  make test-auth-negative   - Только негативные тесты auth-service"
 	@echo ""
-	@echo "=== Тесты auth-service =="
+	@echo "=== Тесты albums ==="
 	@echo "  make test-albums            - Запустить все тесты albums"
+	@echo "  make test-albums-integration - Запустить только интеграционные тесты albums"
 	@echo "=== Доступ к сервисам ==="
 	@echo "  make shell           - Зайти в auth-service (bash)"
 	@echo "  make db-shell        - Зайти в psql authdb"
 	@echo "  make db-albums       - Зайти в psql albumsdb"
 	@echo "  make redis-shell     - Зайти в redis-cli"
-	@echo "  make logs            - Посмотреть логи auth-service"
+	@echo "  make logs-auth            - Посмотреть логи auth-service"
+	@echo "  make logs-albums          - Посмотреть логи albums"
 	@echo ""
 	@echo "  make help            - Показать эту справку"

@@ -16,9 +16,11 @@ import (
 	"albums-api/internal/middleware"
 	"albums-api/internal/repository"
 
+	_ "albums-api/docs" // ← Этот импорт должен быть именно так
+
 	"github.com/gin-gonic/gin"
- 	"github.com/swaggo/files"
-	"github.com/swaggo/gin-swagger"
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
 )
 
 type Server struct {
@@ -77,6 +79,11 @@ func New(cfg *config.Config) *Server {
 		router: router,
 		cfg:    cfg,
 	}
+}
+
+// GetRouter возвращает роутер для использования в тестах
+func (s *Server) GetRouter() *gin.Engine {
+	return s.router
 }
 
 func (s *Server) Start() error {

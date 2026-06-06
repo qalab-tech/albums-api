@@ -1,4 +1,4 @@
-package tests
+package integration
 
 import (
 	"bytes"
@@ -14,7 +14,32 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestPublicEndpoints(t *testing.T) {
+// getValidToken получает свежий токен от auth-service
+func getValidToken(t *testing.T) string {
+	payload := map[string]string{
+		"username": "test",
+		"password": "test",
+	}
+
+	body, _ := json.Marshal(payload)
+
+	resp, err := http.Post("http://auth-service:5001/auth/login", "application/json", bytes.NewBuffer(body))
+	require.NoError(t, err, "Failed to connect to auth-service")
+	defer resp.Body.Close()
+
+	require.Equal(t, http.StatusOK, resp.StatusCode, "Auth service should return 200")
+
+	var result struct {
+		Token string `json:"token"`
+	}
+	err = json.NewDecoder(resp.Body).Decode(&result)
+	require.NoError(t, err, "Failed to parse token response")
+	require.NotEmpty(t, result.Token, "Token should not be empty")
+
+	return result.Token
+}
+
+func TestIntegration_PublicEndpoints(t *testing.T) {
 	cfg, err := config.Load()
 	require.NoError(t, err)
 
@@ -38,34 +63,13 @@ func TestPublicEndpoints(t *testing.T) {
 	})
 }
 
-func TestProtectedEndpoints(t *testing.T) {
+func TestIntegration_ProtectedEndpoints(t *testing.T) {
 	cfg, err := config.Load()
 	require.NoError(t, err)
 
 	srv := server.New(cfg)
 	router := srv.GetRouter()
-
-	payload := map[string]string{
-		"username": "test",
-		"password": "test",
-	}
-
-	body, _ := json.Marshal(payload)
-
-	resp, err := http.Post("http://auth-service:5001/auth/login", "application/json", bytes.NewBuffer(body))
-	require.NoError(t, err, "Failed to connect to auth-service")
-	defer resp.Body.Close()
-
-	require.Equal(t, http.StatusOK, resp.StatusCode, "Auth service should return 200")
-
-	var result struct {
-		Token string `json:"token"`
-	}
-	err = json.NewDecoder(resp.Body).Decode(&result)
-	require.NoError(t, err, "Failed to parse token response")
-	require.NotEmpty(t, result.Token, "Token should not be empty")
-
-	token := result.Token
+	token := getValidToken(t)
 
 	t.Run("POST /api/v1/albums - with valid token", func(t *testing.T) {
 		payload := `{"title":"Integration Test Album","artist":"Test Artist","price":99.99}`
