@@ -13,6 +13,12 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./migrations:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 3s
+      retries: 8
+      start_period: 10s
 
   # ================== Auth Database ==================
   auth-postgres:
@@ -66,8 +72,10 @@ services:
       DB_PASSWORD: postgres
       DB_NAME: albumsdb
       AUTH_SERVICE_URL: http://auth-service:5001
+      GIN_MODE: release
     depends_on:
-      - postgres
+      postgres:
+          condition: service_healthy
 
   # ================== Auth Service (Flask) ==================
   auth-service:
