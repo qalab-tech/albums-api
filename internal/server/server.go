@@ -19,6 +19,7 @@ import (
 	_ "albums-api/docs" // ← Этот импорт должен быть именно так
 
 	"github.com/gin-gonic/gin"
+	"github.com/sirupsen/logrus"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
 )
@@ -47,9 +48,14 @@ func New(cfg *config.Config) *Server {
 
 	router := gin.New()
 
+	// После создания router
+	// Важно: НЕ используем gin.Logger() вообще
+	router.Use(gin.Recovery())
+
+	// Наш кастомный логгер (всегда)
+	router.Use(middleware.Logger(logrus.New())) // или твой глобальный logger
 	// Global middleware
 	router.Use(gin.Recovery())
-	router.Use(gin.Logger())
 
 	// ====================== SWAGGER ======================
 	// Должен быть зарегистрирован ДО групп

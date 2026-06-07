@@ -1,4 +1,4 @@
-package integration
+package tests
 
 import (
 	"bytes"
@@ -81,6 +81,39 @@ func TestIntegration_ProtectedEndpoints(t *testing.T) {
 		router.ServeHTTP(w, req)
 
 		assert.Equal(t, http.StatusCreated, w.Code)
+
+		var resp struct {
+			Success bool `json:"success"`
+			Data    struct {
+				ID    int    `json:"id"`
+				Title string `json:"title"`
+			} `json:"data"`
+		}
+		json.NewDecoder(w.Body).Decode(&resp)
+		assert.True(t, resp.Success)
+		assert.NotEmpty(t, resp.Data.Title)
+	})
+
+	t.Run("PUT /api/v1/albums/:id - with valid token", func(t *testing.T) {
+		payload := `{"title":"Updated Title","price":199.99}`
+		req := httptest.NewRequest("PUT", "/api/v1/albums/1", bytes.NewBufferString(payload))
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Authorization", "Bearer "+token)
+
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusOK, w.Code)
+	})
+
+	t.Run("DELETE /api/v1/albums/:id - with valid token", func(t *testing.T) {
+		req := httptest.NewRequest("DELETE", "/api/v1/albums/2", nil)
+		req.Header.Set("Authorization", "Bearer "+token)
+
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusOK, w.Code)
 	})
 
 	t.Run("POST /api/v1/albums - without token should fail", func(t *testing.T) {
