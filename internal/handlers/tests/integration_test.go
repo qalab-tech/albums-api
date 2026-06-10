@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"testing"
 
 	"albums-api/internal/config"
@@ -14,7 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// getValidToken получает свежий токен
+// getValidToken получает свежий токен от auth-service
 func getValidToken(t *testing.T) string {
 	payload := map[string]string{"username": "test", "password": "test"}
 	body, _ := json.Marshal(payload)
@@ -31,7 +32,7 @@ func getValidToken(t *testing.T) string {
 	return result.Token
 }
 
-// getLastAlbumID получает список и возвращает ID последнего альбома
+// getLastAlbumID получает список альбомов и возвращает ID последнего
 func getLastAlbumID(t *testing.T) int {
 	resp, err := http.Get("http://localhost:8080/api/v1/albums")
 	require.NoError(t, err)
@@ -45,8 +46,8 @@ func getLastAlbumID(t *testing.T) int {
 	}
 	json.NewDecoder(resp.Body).Decode(&result)
 
-	require.True(t, result.Success)
-	require.NotEmpty(t, result.Data)
+	require.True(t, result.Success, "GET /albums should return success")
+	require.NotEmpty(t, result.Data, "There should be at least one album")
 
 	return result.Data[len(result.Data)-1].ID
 }
@@ -75,7 +76,7 @@ func TestIntegration_ProtectedCRUD(t *testing.T) {
 		id := getLastAlbumID(t)
 		payload := `{"title":"Updated Dynamic Title","price":88.88}`
 
-		req := httptest.NewRequest("PUT", "/api/v1/albums/"+string(rune(id)), bytes.NewBufferString(payload))
+		req := httptest.NewRequest("PUT", "/api/v1/albums/"+strconv.Itoa(id), bytes.NewBufferString(payload))
 		req.Header.Set("Content-Type", "application/json")
 		req.Header.Set("Authorization", "Bearer "+token)
 
@@ -88,7 +89,7 @@ func TestIntegration_ProtectedCRUD(t *testing.T) {
 	t.Run("Delete Last Album", func(t *testing.T) {
 		id := getLastAlbumID(t)
 
-		req := httptest.NewRequest("DELETE", "/api/v1/albums/"+string(rune(id)), nil)
+		req := httptest.NewRequest("DELETE", "/api/v1/albums/"+strconv.Itoa(id), nil)
 		req.Header.Set("Authorization", "Bearer "+token)
 
 		w := httptest.NewRecorder()
