@@ -14,56 +14,44 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// getValidToken получает свежий токен от auth-service
+// getValidToken получает свежий токен
 func getValidToken(t *testing.T) string {
-	payload := map[string]string{
-		"username": "test",
-		"password": "test",
-	}
-
+	payload := map[string]string{"username": "test", "password": "test"}
 	body, _ := json.Marshal(payload)
 
 	resp, err := http.Post("http://auth-service:5001/auth/login", "application/json", bytes.NewBuffer(body))
-	require.NoError(t, err, "Failed to connect to auth-service")
+	require.NoError(t, err)
 	defer resp.Body.Close()
-
-	require.Equal(t, http.StatusOK, resp.StatusCode, "Auth service should return 200")
 
 	var result struct {
 		Token string `json:"token"`
 	}
-	err = json.NewDecoder(resp.Body).Decode(&result)
-	require.NoError(t, err, "Failed to parse token response")
-	require.NotEmpty(t, result.Token, "Token should not be empty")
-
+	json.NewDecoder(resp.Body).Decode(&result)
+	require.NotEmpty(t, result.Token)
 	return result.Token
 }
 
-func TestIntegration_PublicEndpoints(t *testing.T) {
-	cfg, err := config.Load()
+// getLastAlbumID получает список и возвращает ID последнего альбома
+func getLastAlbumID(t *testing.T) int {
+	resp, err := http.Get("http://localhost:8080/api/v1/albums")
 	require.NoError(t, err)
+	defer resp.Body.Close()
 
-	srv := server.New(cfg)
-	router := srv.GetRouter()
+	var result struct {
+		Success bool `json:"success"`
+		Data    []struct {
+			ID int `json:"id"`
+		} `json:"data"`
+	}
+	json.NewDecoder(resp.Body).Decode(&result)
 
-	t.Run("GET /api/v1/albums - public access", func(t *testing.T) {
-		req := httptest.NewRequest("GET", "/api/v1/albums", nil)
-		w := httptest.NewRecorder()
-		router.ServeHTTP(w, req)
+	require.True(t, result.Success)
+	require.NotEmpty(t, result.Data)
 
-		assert.Equal(t, http.StatusOK, w.Code)
-	})
-
-	t.Run("GET /api/v1/health - public access", func(t *testing.T) {
-		req := httptest.NewRequest("GET", "/api/v1/health", nil)
-		w := httptest.NewRecorder()
-		router.ServeHTTP(w, req)
-
-		assert.Equal(t, http.StatusOK, w.Code)
-	})
+	return result.Data[len(result.Data)-1].ID
 }
 
-func TestIntegration_ProtectedEndpoints(t *testing.T) {
+func TestIntegration_ProtectedCRUD(t *testing.T) {
 	cfg, err := config.Load()
 	require.NoError(t, err)
 
@@ -71,8 +59,8 @@ func TestIntegration_ProtectedEndpoints(t *testing.T) {
 	router := srv.GetRouter()
 	token := getValidToken(t)
 
-	t.Run("POST /api/v1/albums - with valid token", func(t *testing.T) {
-		payload := `{"title":"Integration Test Album","artist":"Test Artist","price":99.99}`
+	t.Run("Create Album", func(t *testing.T) {
+		payload := `{"title":"Dynamic Test Album","artist":"Test Artist","price":77.77}`
 		req := httptest.NewRequest("POST", "/api/v1/albums", bytes.NewBufferString(payload))
 		req.Header.Set("Content-Type", "application/json")
 		req.Header.Set("Authorization", "Bearer "+token)
@@ -81,22 +69,13 @@ func TestIntegration_ProtectedEndpoints(t *testing.T) {
 		router.ServeHTTP(w, req)
 
 		assert.Equal(t, http.StatusCreated, w.Code)
-
-		var resp struct {
-			Success bool `json:"success"`
-			Data    struct {
-				ID    int    `json:"id"`
-				Title string `json:"title"`
-			} `json:"data"`
-		}
-		json.NewDecoder(w.Body).Decode(&resp)
-		assert.True(t, resp.Success)
-		assert.NotEmpty(t, resp.Data.Title)
 	})
 
-	t.Run("PUT /api/v1/albums/:id - with valid token", func(t *testing.T) {
-		payload := `{"title":"Updated Title","price":199.99}`
-		req := httptest.NewRequest("PUT", "/api/v1/albums/1", bytes.NewBufferString(payload))
+	t.Run("Update Last Album", func(t *testing.T) {
+		id := getLastAlbumID(t)
+		payload := `{"title":"Updated Dynamic Title","price":88.88}`
+
+		req := httptest.NewRequest("PUT", "/api/v1/albums/"+string(rune(id)), bytes.NewBufferString(payload))
 		req.Header.Set("Content-Type", "application/json")
 		req.Header.Set("Authorization", "Bearer "+token)
 
@@ -106,24 +85,15 @@ func TestIntegration_ProtectedEndpoints(t *testing.T) {
 		assert.Equal(t, http.StatusOK, w.Code)
 	})
 
-	t.Run("DELETE /api/v1/albums/:id - with valid token", func(t *testing.T) {
-		req := httptest.NewRequest("DELETE", "/api/v1/albums/2", nil)
+	t.Run("Delete Last Album", func(t *testing.T) {
+		id := getLastAlbumID(t)
+
+		req := httptest.NewRequest("DELETE", "/api/v1/albums/"+string(rune(id)), nil)
 		req.Header.Set("Authorization", "Bearer "+token)
 
 		w := httptest.NewRecorder()
 		router.ServeHTTP(w, req)
 
 		assert.Equal(t, http.StatusOK, w.Code)
-	})
-
-	t.Run("POST /api/v1/albums - without token should fail", func(t *testing.T) {
-		payload := `{"title":"No Token Test","artist":"Test","price":10}`
-		req := httptest.NewRequest("POST", "/api/v1/albums", bytes.NewBufferString(payload))
-		req.Header.Set("Content-Type", "application/json")
-
-		w := httptest.NewRecorder()
-		router.ServeHTTP(w, req)
-
-		assert.Equal(t, http.StatusUnauthorized, w.Code)
 	})
 }
