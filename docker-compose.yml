@@ -91,6 +91,8 @@ services:
       SECRET_KEY: super-secret-jwt-key-change-me-in-production-2026
       JWT_ACCESS_TOKEN_EXPIRES: 3600
       ENV: docker
+    volumes:
+      - ./allure-results:/app/allure-results   # ← добавь эту строку
     depends_on:
       auth-postgres:
         condition: service_healthy

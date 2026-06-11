@@ -33,6 +33,10 @@ test-auth-negative:
 test-albums:
 	docker-compose exec app go test ./internal/handlers/tests -v
 
+test-albums-pytest-allure:
+	docker-compose exec -T auth-service pytest tests/tests_albums_api/ -v --alluredir=allure-results
+	allure serve allure-results
+
 test-albums-integration:
 	docker-compose exec app go test ./internal/handlers/tests -run TestIntegration -v
 
@@ -78,6 +82,7 @@ help:
 	@echo "=== Тесты albums ==="
 	@echo "  make test-albums            - Запустить все тесты albums"
 	@echo "  make test-albums-integration - Запустить только интеграционные тесты albums"
+	@echo "  make test-albums-pytest-allure - Запустить pytest с Allure для albums API"
 	@echo "=== Доступ к сервисам ==="
 	@echo "  make shell           - Зайти в auth-service (bash)"
 	@echo "  make db-shell        - Зайти в psql authdb"
