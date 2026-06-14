@@ -1,0 +1,10 @@
+all: false # Выключаем автопоиск по всему проекту
+inpackage: true
+
+packages:
+  albums-api:
+    interfaces:
+      SimpleGateway: # Жестко указываем имя нашего подопытного!
+  albums-api/internal/repository: # путь к папке репозитория
+    interfaces:
+      AlbumRepository: # Имя интерфейса базы данных, который мы хотим замокать
